@@ -1,0 +1,9 @@
+---
+tls-san:
+  - $public_ip
+  - $dns_if_you_want_it
+  - $private_ip
+node-label:
+  - master=True
+no-deploy:
+  - servicelb

@@ -46,6 +46,8 @@ vpc2_compute = {
 }
 ```
 
+> If you want to get the IPs again later, just run `terraform output` from the terraform directory.
+
 ## Create your ZeroTier Network
 
 [In the ZeroTier console](https://my.zerotier.com), create a network and get the Network ID.
@@ -57,6 +59,9 @@ Provision your Zerotier router with the steps [roughly listed here](https://www.
 This might look like:
 
 ```bash
+# Disable the snapd service; this can take up a **TON** of system resources on smaller VMs.
+sudo systemctl stop snapd && sudo systemctl disable snapd
+
 # Install Zerotier and join to the previous network
 curl -s https://install.zerotier.com | sudo bash
 sudo zerotier-cli join ba0348ec2d6679b4
@@ -85,25 +90,56 @@ sudo systemctl enable zerotier-one
 
 Back on the ZeroTier Network, you'll want to add a Managed Route with the destination of `192.168.0.0/24` via the IP of your ZeroTier Router IP address (the zerotier IP, not the host IP).
 
+## All K3s Hosts
+
+```bash
+# Disable the snapd service; this can take up a **TON** of system resources on smaller VMs.
+sudo systemctl stop snapd && sudo systemctl disable snapd
+
+# Install K3s
+sudo wget https://github.com/k3s-io/k3s/releases/download/v1.21.2%2Bk3s1/k3s -O /usr/local/bin/k3s
+sudo chmod a+x /usr/local/bin/k3s
+sudo mkdir -p /etc/rancher/k3s
+```
+
 ## K3s Control Plane
 
 On your `k3s-controlplane` vm, you can set up a static route to be able to reach the `k3s-node` host by running:
 
 ```bash
 sudo ip route add 192.168.1.0/24 via $zerotier_router_internal_ip
+sudo hostnamectl set-hostname --static k3s-controlplane
 ```
 
-## K3s Control Plane
+Additionally:
+
+- Fill in the values in the `config.yaml` file appropriately.
+- Copy it to `/etc/rancher/k3s/config.yaml`
+- Copy the service file to `/etc/systemd/system/k3s.service`
+- Run `sudo systemctl daemon-reload && sudo systemctl enable --now k3s`
+- Run `cat /var/lib/rancher/k3s/server/token`; you'll need this for the worker node.
+
+You also may want to copy off the kubeconfig file from the control plane. It will be located, by default, at `/etc/rancher/k3s/k3s.yaml`. SCP it locally to your system and put it at `~/.kube/config` with `0600` permissions.
+
+## K3s Worker Node
+
+On your `k3s-node` vm:
 
 ```bash
-sudo wget https://github.com/k3s-io/k3s/releases/download/v1.21.2%2Bk3s1/k3s -O /usr/local/bin/k3s
-sudo chmod a+x /usr/local/bin/k3s
-sudo mkdir -p /etc/rancher/k3s
+curl -s https://install.zerotier.com | sudo bash
+sudo zerotier-cli join $ZT_NETID
 ```
+
+Additionally:
+
+- Fill in the values in the `config.yaml` file
+- Copy it to `/etc/rancher/k3s/config.yaml`
+- Copy the service file to `/etc/systemd/system/k3s-node.service`
+- Run `sudo systemctl daemon-reload && sudo systemctl enable --now k3s-node`
 
 ## Destorying Infrastructure
 
-You can destroy your Terraform infrastructure by running the following command from the `terraform` directory:
+When you're done, destroy your Terraform infrastructure by running the following command from the `terraform` directory:
 
 ```bash
 terraform destroy -var-file=vars.tfvars
