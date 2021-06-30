@@ -1,9 +1,7 @@
 ---
 tls-san:
   - $public_ip
-  - $dns_if_you_want_it
   - $private_ip
+# - $public_dns_only_if_you_want_it
 node-label:
   - master=True
-no-deploy:
-  - servicelb

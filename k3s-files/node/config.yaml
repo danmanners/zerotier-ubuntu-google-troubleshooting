@@ -1,0 +1,7 @@
+---
+server: https://192.168.0.3:6443  # This may be wrong; verify the privateIP of the control plane public IP with `ip a`
+flannel-iface: ztyou2j6dw         # If this is wrong, change it.
+token: UPDATE::ME                 # 'cat /var/lib/rancher/k3s/server/token' on the control-plane host
+node-external-ip: 1.1.1.1         # Set this to the **ACTUAL** public IP for your host
+node-label:
+  - "node.kubernetes.io/role=agent"
